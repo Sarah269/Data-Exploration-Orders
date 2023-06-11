@@ -9,3 +9,4 @@ The following tasks were performed:
 - What are the sales min, avg, and max by region and country where year =1995 and order status ='F'?
 - What is the order volume by clerk?
 
+![](https://github.com/Sarah269/Data-Exploration-Orders/blob/main/Snowflake%20Orders%20By%20Region%20Country.png)
