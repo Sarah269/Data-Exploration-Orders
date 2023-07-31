@@ -1,5 +1,6 @@
 # Data-Exploration-Orders
 
+Exploring the sample orders table in Snowflake
 Snowflake Sample data table:  Orders.
 
 The following tasks were performed:
@@ -7,6 +8,6 @@ The following tasks were performed:
 - Joined temporary table with country, region, & customer to orders table
 - What is the distribution of the order status?
 - What are the sales min, avg, and max by region and country where year =1995 and order status ='F'?
-- What is the order volume by clerk?
+  
 
 ![](https://github.com/Sarah269/Data-Exploration-Orders/blob/main/Snowflake%20Orders%20By%20Region%20Country.png)
