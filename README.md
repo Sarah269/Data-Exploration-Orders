@@ -12,7 +12,10 @@ The following tasks were performed:
   
 Insight:  tables will require views to facilitate querying
 
+<p> SQL:</p>
+(https://github.com/Sarah269/Data-Exploration-Orders/blob/main/snowflake%20data%20exploration%20Orders.txt)
 
+<p></p>
 
 <p> Q1: What are the values for order status?</p>
 
