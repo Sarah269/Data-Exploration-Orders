@@ -1,0 +1,148 @@
+/*Snowflake database: snowflake_sample_data.tpch_sf100*/
+/*Snowflake tables:  orders (15 million rows), nation (25 million rows)*/
+/* region (5 million rows), customer (15 million rows)*/
+/* lineitems (600 million rows), part (20 million rows */
+
+/* Data Exploration.  Querying large data tables*/
+
+use schema snowflake_sample_data.tpch_sf100;
+
+
+/*what are the values for order status?*/
+select distinct(o_orderstatus)
+from SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.orders;
+
+/*What is the distribution of order status?*/
+select Year, orderstatus, totalorderprice, sum(totalorderprice) over (partition by year) as totalorderprice_by_year, ((totalorderprice*100)/totalorderprice_by_year) as Perc_of_total
+from (
+select to_varchar(o_orderdate, 'yyyy') as Year, o_orderstatus as orderstatus, sum(o_totalprice) as totalorderprice
+from SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.orders
+group by Year, orderstatus
+order by Year);
+
+
+/* 1994 Sales stats by country */
+select r_name as region, n_name as country, sum(o_totalprice) as total_sales,
+round(avg(o_totalprice),2) as avg_sales,
+max(o_totalprice) as max_sales,
+min(o_totalprice) as min_sales
+from SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.orders o
+join workingtables.sd_tpch_sf100.cust_ctry_reg c
+on o.o_custkey = c.c_custkey
+where o_orderstatus ='F' and Year(o_orderdate) = 1994
+group by r_name, n_name
+order by r_name, n_name 
+;
+
+/* number of orders placed by month in 1994 */
+select to_varchar(o_orderdate, 'yyyy-mm')as orderdate, count(o_orderkey)
+from SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.orders
+where year(o_orderdate) = 1994
+group by orderdate
+order by orderdate;
+
+
+/* Items most ordered*/
+select l_partkey,  p_name, p_type, count(*)
+from SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.lineitem l
+join SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.part p
+on l_partkey = p_partkey
+group by l_partkey, p_name, p_type
+order by count(*) desc
+limit 10
+
+/* 10 most ordered items in 1994 */
+select l_partkey,  p_name, p_type, count(*) as num_orders
+from SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.lineitem l
+join SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.part p
+on l_partkey = p_partkey
+where l_orderkey in (select o_orderkey from SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.orders where year(o_orderdate) =1994)
+group by l_partkey, p_name, p_type
+order by count(*) desc
+limit 10
+
+
+/* Country and Region for each customer */
+create temporary table workingtables.sd_tpch_sf100.cust_ctry_reg as
+(
+select c.c_custkey, c.c_name, x.r_name, x.n_name
+from (
+select r_name, r_regionkey,n_name, n_nationkey
+from SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.nation n
+join SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.region r
+on n.n_regionkey = r.r_regionkey
+) x
+join SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.customer c
+on c.c_nationkey = x.n_nationkey
+order by r_name, n_name, c_name
+)
+
+/*number of orders placed in each country in 1994 */
+select n_name as country, r_name as region,count(o_orderkey) as num_orders 
+from SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.orders
+join workingtables.sd_tpch_sf100.cust_ctry_reg c
+on o_custkey = c.c_custkey
+where year(o_orderdate) = 1994
+group by n_name, r_name
+order by n_name;
+
+
+
+/*which 10 customers placed the most orders in 1994*/
+select to_char(o_custkey) as custid, r_name as region, n_name as country,count(o_orderkey) as num_orders
+from SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.orders
+join workingtables.sd_tpch_sf100.cust_ctry_reg c
+on o_custkey = c.c_custkey
+where year(o_orderdate) = 1994
+group by o_custkey, r_name, n_name
+order by num_orders desc, custid
+limit 10;
+
+/*create orders details tables */
+create temporary table workingtables.sd_tpch_sf100.Y1994_order_details as
+(
+select o_custkey, o_orderdate, ld.*
+from SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.orders
+join
+
+(select l_orderkey, l_partkey,  l_quantity, p_name, p_type, p_retailprice
+from SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.lineitem l
+join SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.part p
+on l_partkey = p_partkey
+where l_orderkey in (select o_orderkey from SNOWFLAKE_SAMPLE_DATA.TPCH_SF100.orders where year(o_orderdate) =1994)
+order by l_orderkey
+) ld
+on o_orderkey = l_orderkey
+);
+
+
+/*What product was frequently ordered in each country?*/
+select * 
+from (
+select r_name, n_name, l_partkey, p_name, p_type, count(*) as num_times_ordered,
+dense_rank() over (partition by r_name, n_name order by r_name, n_name, num_times_ordered desc) as rank_items
+from workingtables.sd_tpch_sf100.Y1994_order_details o
+join workingtables.sd_tpch_sf100.cust_ctry_reg c
+on o.o_custkey = c.c_custkey
+group by r_name, n_name, l_partkey,p_name, p_type
+order by r_name, n_name, num_times_ordered desc
+)
+where rank_items =1
+order by r_name, n_name, rank_items;
+
+
+ 
+/* What product did each country order the most in quantity?*/
+select * 
+from (
+select r_name, n_name, l_partkey, p_name, p_type, sum(l_quantity) as qty_ordered,
+dense_rank() over (partition by r_name, n_name order by r_name, n_name, qty_ordered desc) as rank_items
+from workingtables.sd_tpch_sf100.Y1994_order_details o
+join workingtables.sd_tpch_sf100.cust_ctry_reg c
+on o.o_custkey = c.c_custkey
+group by r_name, n_name, l_partkey,p_name, p_type
+order by r_name, n_name, qty_ordered desc
+)
+where rank_items =1
+order by r_name, n_name, rank_items;
+
