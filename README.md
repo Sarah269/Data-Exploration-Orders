@@ -10,7 +10,9 @@ The following tasks were performed:
 - joins, subqueries, windows function
 - Answered ten questions
   
-Insight:  tables will requires views to facilitate querying)
+Insight:  tables will require views to facilitate querying
+
+
 
 <p> Q1: What are the values for order status?</p>
 
