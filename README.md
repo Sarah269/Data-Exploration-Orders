@@ -3,7 +3,7 @@
 Data Exploration.  Querying large tables.
 <p> Snowflake tables: </p>
 <p> orders (15 million rows), nation (25 million rows), region (5 million rows), customer (15 million rows),
-lineitems (600 million rows), part (20 million rows </p>
+lineitems (600 million rows), part (20 million rows) </p>
 
 The following tasks were performed:
 - created temporary tables
